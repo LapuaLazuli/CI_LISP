@@ -1,4 +1,5 @@
 #include "ciLisp.h"
+#include <math.h>
 
 void yyerror(char *s) {
     fprintf(stderr, "\nERROR: %s\n", s);
@@ -61,7 +62,17 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
     if ((node = calloc(nodeSize, 1)) == NULL)
         yyerror("Memory allocation failed!");
 
-    // TODO set the AST_NODE's type, assign values to contained NUM_AST_NODE
+    // TODO set the AST_NODE's type, assign values to contained NUM_AST_NODE done
+    node->type = NUM_NODE_TYPE;
+    node->data.number.type = type;
+    switch (type){
+        case INT_TYPE:
+            node->data.number.value.ival = (long) value;
+            break;
+        case DOUBLE_TYPE:
+            node->data.number.value.dval = value;
+            break;
+    }
 
     return node;
 }
@@ -83,13 +94,16 @@ AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2)
     if ((node = calloc(nodeSize, 1)) == NULL)
         yyerror("Memory allocation failed!");
 
-    // TODO set the AST_NODE's type, populate contained FUNC_AST_NODE
+    // TODO set the AST_NODE's type, populate contained FUNC_AST_NODE done
     // NOTE: you do not need to populate the "ident" field unless the function is type CUSTOM_OPER.
     // When you do have a CUSTOM_OPER, you do NOT need to allocate and strcpy here.
     // The funcName will be a string identifier for which space should be allocated in the tokenizer.
     // For CUSTOM_OPER functions, you should simply assign the "ident" pointer to the passed in funcName.
     // For functions other than CUSTOM_OPER, you should free the funcName after you're assigned the OPER_TYPE.
-
+    node->type = FUNC_NODE_TYPE;
+    node->data.function.oper = resolveFunc(funcName);
+    node->data.function.op1 = op1;
+    node->data.function.op2 = op2;
     return node;
 }
 
@@ -129,11 +143,17 @@ RET_VAL eval(AST_NODE *node)
 
     RET_VAL result = {INT_TYPE, NAN}; // see NUM_AST_NODE, because RET_VAL is just an alternative name for it.
 
-    // TODO complete the switch.
+    // TODO complete the switch. done
     // Make calls to other eval functions based on node type.
     // Use the results of those calls to populate result.
     switch (node->type)
     {
+        case NUM_NODE_TYPE:
+            result = evalNumNode(&node->data.number);
+            break;
+        case FUNC_NODE_TYPE:
+            result = evalFuncNode(&node->data.function);
+            break;
         default:
             yyerror("Invalid AST_NODE_TYPE, probably invalid writes somewhere!");
     }
@@ -150,8 +170,17 @@ RET_VAL evalNumNode(NUM_AST_NODE *numNode)
 
     RET_VAL result = {INT_TYPE, NAN};
 
-    // TODO populate result with the values stored in the node.
+    // TODO populate result with the values stored in the node. done
     // SEE: AST_NODE, AST_NODE_TYPE, NUM_AST_NODE
+    result.type = numNode->type;
+    switch (numNode->type){
+        case INT_TYPE:
+            result.value.ival = numNode->value.ival;
+            break;
+        case DOUBLE_TYPE:
+            result.value.dval = numNode->value.dval;
+            break;
+    }
 
 
     return result;
@@ -167,13 +196,253 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
 
     // TODO populate result with the result of running the function on its operands.
     // SEE: AST_NODE, AST_NODE_TYPE, FUNC_AST_NODE
+    RET_VAL o1 = eval(funcNode->op1);
+    RET_VAL o2 = eval(funcNode->op2);
+    switch (funcNode->oper){
+        case NEG_OPER:
+            result = o1;
+            if (result.type == INT_TYPE){
+                result.value.ival *= -1;
+            } else result.value.dval *= -1;
+            break;
 
+        case ABS_OPER:
+            result = o1;
+            switch (result.type){
+                case INT_TYPE:
+                    result.value.ival = (long) fabs((double) result.value.ival);
+                    break;
+                case DOUBLE_TYPE:
+                    result.value.dval = fabs(result.value.dval);
+                    break;
+            }
+            break;
 
+        case EXP_OPER:
+            result = o1;
+            switch (result.type){
+                case INT_TYPE:
+                    result.type = DOUBLE_TYPE;
+                    result.value.dval = exp((double) result.value.ival);
+                    break;
+                case DOUBLE_TYPE:
+                    result.value.dval = exp(result.value.dval);
+                    break;
+            }
+            break;
+
+        case SQRT_OPER:
+            result = o1;
+            switch (result.type){
+                case INT_TYPE:
+                    result.type = DOUBLE_TYPE;
+                    result.value.dval = sqrt((double) result.value.ival);
+                    break;
+                case DOUBLE_TYPE:
+                    result.value.dval = sqrt(result.value.dval);
+                    break;
+            }
+            break;
+        case ADD_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.type = INT_TYPE;
+                result.value.ival = o1.value.ival + o2.value.ival;
+            }
+            else{
+                result.type = DOUBLE_TYPE;
+                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = o1.value.dval + o2.value.dval;
+                }
+                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = (double) o1.value.ival + o2.value.dval;
+                } else{
+                    result.value.dval = o1.value.dval + (double) o2.value.ival;
+                }
+            }
+            break;
+        case SUB_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.type = INT_TYPE;
+                result.value.ival = o1.value.ival - o2.value.ival;
+            }
+            else{
+                result.type = DOUBLE_TYPE;
+                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = o1.value.dval - o2.value.dval;
+                }
+                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = (double) o1.value.ival - o2.value.dval;
+                } else{
+                    result.value.dval = o1.value.dval - (double) o2.value.ival;
+                }
+            }
+            break;
+        case MULT_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.type = INT_TYPE;
+                result.value.ival = o1.value.ival * o2.value.ival;
+            }
+            else{
+                result.type = DOUBLE_TYPE;
+                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = o1.value.dval * o2.value.dval;
+                }
+                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = (double) o1.value.ival * o2.value.dval;
+                } else{
+                    result.value.dval = o1.value.dval * (double) o2.value.ival;
+                }
+            }
+            break;
+        case DIV_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.type = INT_TYPE;
+                result.value.ival = o1.value.ival / o2.value.ival;
+            }
+            else{
+                result.type = DOUBLE_TYPE;
+                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = o1.value.dval / o2.value.dval;
+                }
+                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = (double) o1.value.ival / o2.value.dval;
+                } else{
+                    result.value.dval = o1.value.dval / (double) o2.value.ival;
+                }
+            }
+            break;
+        case REMAINDER_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.type = INT_TYPE;
+                result.value.ival = o1.value.ival % o2.value.ival;
+            }
+            else{
+                result.type = DOUBLE_TYPE;
+                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = remainder(o1.value.dval, o2.value.dval);
+                }
+                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = remainder((double) o1.value.ival, o2.value.dval);
+                } else{
+                    result.value.dval = remainder(o1.value.dval, (double) o2.value.ival);
+                }
+            }
+            break;
+        case LOG_OPER:
+            result.type = DOUBLE_TYPE;
+            switch (o1.type){
+                case INT_TYPE:
+                    result.value.dval = log((double) o1.value.ival);
+                    break;
+                case DOUBLE_TYPE:
+                    result.value.dval = log(o1.value.dval);
+                    break;
+            }
+            break;
+        case POW_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.type = INT_TYPE;
+                result.value.ival = o1.value.ival % o2.value.ival;
+            }
+            else{
+                result.type = DOUBLE_TYPE;
+                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = remainder(o1.value.dval, o2.value.dval);
+                }
+                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                    result.value.dval = remainder((double) o1.value.ival, o2.value.dval);
+                } else{
+                    result.value.dval = remainder(o1.value.dval, (double) o2.value.ival);
+                }
+            }
+            break;
+        case MAX_OPER:
+
+            break;
+        case MIN_OPER:
+            break;
+        case EXP2_OPER:
+            break;
+        case CBRT_OPER:
+            break;
+        case HYPOT_OPER:
+            break;
+        case READ_OPER:
+            break;
+        case RAND_OPER:
+            break;
+        case PRINT_OPER:
+            break;
+        case EQUAL_OPER:
+            break;
+        case LESS_OPER:
+            break;
+        case GREATER_OPER:
+            break;
+        case CUSTOM_OPER:
+            break;
+    }
     return result;
 }
 
 // prints the type and value of a RET_VAL
 void printRetVal(RET_VAL val)
 {
-    // TODO print the type and value of the value passed in.
+    // TODO print the type and value of the value passed in. done
+    printf("Type:");
+    switch (val.type){
+        case INT_TYPE:
+            printf("Integer, Value %ld\n", val.value.ival);
+            break;
+        case DOUBLE_TYPE:
+            printf("Double, Value %.2lf\n", val.value.dval);
+            break;
+    }
+}
+
+NUM_TYPE resultTypeSetter(RET_VAL o1, RET_VAL o2, FUNC_AST_NODE func){
+    switch (func.oper){
+
+        case NEG_OPER:
+        case ABS_OPER:
+        case EXP_OPER:
+        case SQRT_OPER:
+            return o1.type;
+        case ADD_OPER:
+        case SUB_OPER:
+        case MULT_OPER:
+        case DIV_OPER:
+        case REMAINDER_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE) return INT_TYPE;
+            else return DOUBLE_TYPE;
+        case LOG_OPER:
+            break;
+        case POW_OPER:
+            break;
+        case MAX_OPER:
+            break;
+        case MIN_OPER:
+            break;
+        case EXP2_OPER:
+            break;
+        case CBRT_OPER:
+            break;
+        case HYPOT_OPER:
+            break;
+        case READ_OPER:
+            break;
+        case RAND_OPER:
+            break;
+        case PRINT_OPER:
+            break;
+        case EQUAL_OPER:
+            break;
+        case LESS_OPER:
+            break;
+        case GREATER_OPER:
+            break;
+        case CUSTOM_OPER:
+            break;
+    }
+
 }
