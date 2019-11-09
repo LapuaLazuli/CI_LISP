@@ -198,6 +198,7 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
     // SEE: AST_NODE, AST_NODE_TYPE, FUNC_AST_NODE
     RET_VAL o1 = eval(funcNode->op1);
     RET_VAL o2 = eval(funcNode->op2);
+    result.type = resultTypeSetter(o1, o2, funcNode);
     switch (funcNode->oper){
         case NEG_OPER:
             result = o1;
@@ -245,11 +246,9 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
         case ADD_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE){
-                result.type = INT_TYPE;
                 result.value.ival = o1.value.ival + o2.value.ival;
             }
             else{
-                result.type = DOUBLE_TYPE;
                 if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
                     result.value.dval = o1.value.dval + o2.value.dval;
                 }
@@ -262,11 +261,9 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
         case SUB_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE){
-                result.type = INT_TYPE;
                 result.value.ival = o1.value.ival - o2.value.ival;
             }
             else{
-                result.type = DOUBLE_TYPE;
                 if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
                     result.value.dval = o1.value.dval - o2.value.dval;
                 }
@@ -279,11 +276,9 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
         case MULT_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE){
-                result.type = INT_TYPE;
                 result.value.ival = o1.value.ival * o2.value.ival;
             }
             else{
-                result.type = DOUBLE_TYPE;
                 if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
                     result.value.dval = o1.value.dval * o2.value.dval;
                 }
@@ -296,28 +291,23 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
         case DIV_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE){
-                result.type = INT_TYPE;
-                result.value.ival = o1.value.ival / o2.value.ival;
+                result.value.dval = (double) o1.value.ival / (double) o2.value.ival;
             }
-            else{
-                result.type = DOUBLE_TYPE;
-                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
-                    result.value.dval = o1.value.dval / o2.value.dval;
-                }
-                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
-                    result.value.dval = (double) o1.value.ival / o2.value.dval;
-                } else{
-                    result.value.dval = o1.value.dval / (double) o2.value.ival;
-                }
+            else if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = o1.value.dval / o2.value.dval;
             }
+            else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = (double) o1.value.ival / o2.value.dval;
+            } else{
+                result.value.dval = o1.value.dval / (double) o2.value.ival;
+            }
+
             break;
         case REMAINDER_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE){
-                result.type = INT_TYPE;
                 result.value.ival = o1.value.ival % o2.value.ival;
             }
             else{
-                result.type = DOUBLE_TYPE;
                 if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
                     result.value.dval = remainder(o1.value.dval, o2.value.dval);
                 }
@@ -329,7 +319,6 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             }
             break;
         case LOG_OPER:
-            result.type = DOUBLE_TYPE;
             switch (o1.type){
                 case INT_TYPE:
                     result.value.dval = log((double) o1.value.ival);
@@ -341,45 +330,63 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
         case POW_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE){
-                result.type = INT_TYPE;
-                result.value.ival = o1.value.ival % o2.value.ival;
+                result.value.dval = pow((double) o1.value.ival, (double) o2.value.ival);
+            }else if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = pow(o1.value.dval, o2.value.dval);
             }
-            else{
-                result.type = DOUBLE_TYPE;
-                if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
-                    result.value.dval = remainder(o1.value.dval, o2.value.dval);
-                }
-                else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
-                    result.value.dval = remainder((double) o1.value.ival, o2.value.dval);
-                } else{
-                    result.value.dval = remainder(o1.value.dval, (double) o2.value.ival);
-                }
+            else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = pow((double) o1.value.ival, o2.value.dval);
+            } else{
+                result.value.dval = pow(o1.value.dval, (double) o2.value.ival);
             }
             break;
         case MAX_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.value.dval = fmax((double) o1.value.ival, (double) o2.value.ival);
+            }
+            else if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = fmax(o1.value.dval, o2.value.dval);
+            }
+            else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = fmax((double) o1.value.ival, o2.value.dval);
+            } else{
+                result.value.dval = fmax(o1.value.dval, (double) o2.value.ival);
+            }
 
             break;
         case MIN_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.value.dval = fmin((double) o1.value.ival, (double) o2.value.ival);
+            }
+            else if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = fmin(o1.value.dval, o2.value.dval);
+            }
+            else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = fmin((double) o1.value.ival, o2.value.dval);
+            } else{
+                result.value.dval = fmin(o1.value.dval, (double) o2.value.ival);
+            }
             break;
         case EXP2_OPER:
+            if(o1.type == INT_TYPE) result.value.dval = exp2(o1.value.ival);
+            else result.value.dval = exp2(o1.value.dval);
             break;
         case CBRT_OPER:
+            if(o1.type == INT_TYPE) result.value.dval = cbrt(o1.value.ival);
+            else result.value.dval = cbrt(o1.value.dval);
             break;
         case HYPOT_OPER:
-            break;
-        case READ_OPER:
-            break;
-        case RAND_OPER:
-            break;
-        case PRINT_OPER:
-            break;
-        case EQUAL_OPER:
-            break;
-        case LESS_OPER:
-            break;
-        case GREATER_OPER:
-            break;
-        case CUSTOM_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE){
+                result.value.dval = hypot((double) o1.value.ival, (double) o2.value.ival);
+            }
+            else if (o1.type == DOUBLE_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = hypot(o1.value.dval, o2.value.dval);
+            }
+            else if (o1.type == INT_TYPE && o2.type == DOUBLE_TYPE){
+                result.value.dval = hypot((double) o1.value.ival, o2.value.dval);
+            } else{
+                result.value.dval = hypot(o1.value.dval, (double) o2.value.ival);
+            }
             break;
     }
     return result;
@@ -407,42 +414,22 @@ NUM_TYPE resultTypeSetter(RET_VAL o1, RET_VAL o2, FUNC_AST_NODE func){
         case ABS_OPER:
         case EXP_OPER:
         case SQRT_OPER:
+        case EXP2_OPER:
             return o1.type;
         case ADD_OPER:
         case SUB_OPER:
         case MULT_OPER:
-        case DIV_OPER:
         case REMAINDER_OPER:
+        case POW_OPER:
             if (o1.type == INT_TYPE && o2.type == INT_TYPE) return INT_TYPE;
             else return DOUBLE_TYPE;
         case LOG_OPER:
-            break;
-        case POW_OPER:
-            break;
-        case MAX_OPER:
-            break;
-        case MIN_OPER:
-            break;
-        case EXP2_OPER:
-            break;
         case CBRT_OPER:
-            break;
         case HYPOT_OPER:
-            break;
-        case READ_OPER:
-            break;
-        case RAND_OPER:
-            break;
-        case PRINT_OPER:
-            break;
-        case EQUAL_OPER:
-            break;
-        case LESS_OPER:
-            break;
-        case GREATER_OPER:
-            break;
-        case CUSTOM_OPER:
-            break;
+        case DIV_OPER:
+        case MAX_OPER:
+        case MIN_OPER:
+            return DOUBLE_TYPE;
     }
 
 }
