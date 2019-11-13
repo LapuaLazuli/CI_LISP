@@ -58,7 +58,8 @@ typedef enum {
 // Types of numeric values
 typedef enum {
     INT_TYPE,
-    DOUBLE_TYPE
+    DOUBLE_TYPE,
+    NO_TYPE
 } NUM_TYPE;
 
 //Node to store a symbol
@@ -71,7 +72,6 @@ typedef struct {
     NUM_TYPE type;
     union{
         double dval;
-        long ival;
     } value;
 } NUM_AST_NODE;
 
@@ -103,6 +103,7 @@ typedef struct ast_node {
 
 //Stores a symbol table
 typedef struct sym_table_node{
+    NUM_TYPE val_type;
     char *id;
     AST_NODE *value;
     struct sym_table_node *next;
@@ -117,17 +118,17 @@ void freeNode(AST_NODE *node);
 RET_VAL eval(AST_NODE *node);
 RET_VAL evalNumNode(NUM_AST_NODE *numNode);
 RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode);
-RET_VAL evalSymNode(SYM_AST_NODE *symNode);
+RET_VAL evalSymNode(SYM_AST_NODE *symNode, AST_NODE *node);
 
-AST_NODE *lookup(AST_NODE *node);
+AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin);
 AST_NODE *createSymbolNode(char *symbol);
-SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier);
+SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier, char *type);
 SYM_TABLE_NODE *addToSymbolTable(SYM_TABLE_NODE *root, SYM_TABLE_NODE *new);
 AST_NODE *linkSymbolTable(SYM_TABLE_NODE *table, AST_NODE *node);
 
 
 
-
+void printFunc(AST_NODE *node);
 void printRetVal(RET_VAL val);
 
 #endif

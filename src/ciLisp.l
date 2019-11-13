@@ -10,11 +10,17 @@ digit [0-9]
 letter [a-zA-Z]
 int [+-]?{digit}+
 double [+-]?{digit}*\.{digit}*
-func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"|"cbrt"|"hypot"|"exp2"
+func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"|"cbrt"|"hypot"|"exp2"|"print"
+type "int"|"double"
 symbol {letter}+
 
 %%
 
+{type} {
+    yylval.sval = (char *) malloc(strlen(yytext)*sizeof(char)+1);
+    strcpy(yylval.sval, yytext);
+    return TYPE;
+}
 "let" {
     fprintf(stderr, "lex: LET");
     return LET;
