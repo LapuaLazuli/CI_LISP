@@ -103,7 +103,51 @@ AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2)
     node->type = FUNC_NODE_TYPE;
     node->data.function.oper = resolveFunc(funcName);
     node->data.function.op1 = op1;
+    op1->parent = node;
     node->data.function.op2 = op2;
+    op2->parent = node;
+
+    return node;
+}
+
+AST_NODE *createSymbolNode(char* symbol){
+    AST_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(AST_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+        yyerror("Memory allocation failed!");
+
+    node->type = SYM_NODE_TYPE;
+    node->data.symbol.identifier = symbol;
+
+    return node;
+}
+
+SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier){
+    SYM_TABLE_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(SYM_TABLE_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+        yyerror("Memory allocation failed!");
+
+    node->id = identifier;
+    node->value = value;
+    node->next = NULL;
+
+    return node;
+
+}
+
+SYM_TABLE_NODE *addToSymbolTable(SYM_TABLE_NODE *root, SYM_TABLE_NODE *new){
+    SYM_TABLE_NODE *current = root->next;
+    new->next = root;
+    return new;
+}
+
+AST_NODE *linkSymbolTable(SYM_TABLE_NODE *table, AST_NODE *node){
+    node->table = table;
     return node;
 }
 
@@ -154,6 +198,8 @@ RET_VAL eval(AST_NODE *node)
         case FUNC_NODE_TYPE:
             result = evalFuncNode(&node->data.function);
             break;
+        case SYM_NODE_TYPE:
+            result = evalSymNode(&node->data.symbol);
         default:
             yyerror("Invalid AST_NODE_TYPE, probably invalid writes somewhere!");
     }
@@ -186,6 +232,36 @@ RET_VAL evalNumNode(NUM_AST_NODE *numNode)
     return result;
 }
 
+RET_VAL evalSymNode(SYM_AST_NODE *symNode){
+    AST_NODE *done = lookup(symNode);
+    return eval(done);
+}
+
+NUM_TYPE resultTypeSetter(RET_VAL o1, RET_VAL o2, FUNC_AST_NODE func){
+    switch (func.oper){
+        case NEG_OPER:
+        case ABS_OPER:
+        case EXP_OPER:
+        case SQRT_OPER:
+            return o1.type;
+        case ADD_OPER:
+        case SUB_OPER:
+        case MULT_OPER:
+        case REMAINDER_OPER:
+            if (o1.type == INT_TYPE && o2.type == INT_TYPE) return INT_TYPE;
+            else return DOUBLE_TYPE;
+        case LOG_OPER:
+        case CBRT_OPER:
+        case HYPOT_OPER:
+        case DIV_OPER:
+        case MAX_OPER:
+        case MIN_OPER:
+        case POW_OPER:
+        case EXP2_OPER:
+            return DOUBLE_TYPE;
+    }
+
+}
 
 RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
 {
@@ -198,7 +274,7 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
     // SEE: AST_NODE, AST_NODE_TYPE, FUNC_AST_NODE
     RET_VAL o1 = eval(funcNode->op1);
     RET_VAL o2 = eval(funcNode->op2);
-    result.type = resultTypeSetter(o1, o2, funcNode);
+    result.type = resultTypeSetter(o1, o2, *funcNode);
     switch (funcNode->oper){
         case NEG_OPER:
             result = o1;
@@ -372,7 +448,7 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             else result.value.dval = exp2(o1.value.dval);
             break;
         case CBRT_OPER:
-            if(o1.type == INT_TYPE) result.value.dval = cbrt(o1.value.ival);
+            if(o1.type == INT_TYPE) result.value.dval = cbrt((double) o1.value.ival);
             else result.value.dval = cbrt(o1.value.dval);
             break;
         case HYPOT_OPER:
@@ -396,7 +472,7 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
 void printRetVal(RET_VAL val)
 {
     // TODO print the type and value of the value passed in. done
-    printf("Type:");
+    printf("Type: ");
     switch (val.type){
         case INT_TYPE:
             printf("Integer, Value %ld\n", val.value.ival);
@@ -407,29 +483,21 @@ void printRetVal(RET_VAL val)
     }
 }
 
-NUM_TYPE resultTypeSetter(RET_VAL o1, RET_VAL o2, FUNC_AST_NODE func){
-    switch (func.oper){
-
-        case NEG_OPER:
-        case ABS_OPER:
-        case EXP_OPER:
-        case SQRT_OPER:
-        case EXP2_OPER:
-            return o1.type;
-        case ADD_OPER:
-        case SUB_OPER:
-        case MULT_OPER:
-        case REMAINDER_OPER:
-        case POW_OPER:
-            if (o1.type == INT_TYPE && o2.type == INT_TYPE) return INT_TYPE;
-            else return DOUBLE_TYPE;
-        case LOG_OPER:
-        case CBRT_OPER:
-        case HYPOT_OPER:
-        case DIV_OPER:
-        case MAX_OPER:
-        case MIN_OPER:
-            return DOUBLE_TYPE;
+AST_NODE *lookup(AST_NODE *node){
+    char *search = node->data.symbol.identifier;
+    while (node != NULL) {
+        SYM_TABLE_NODE *currentTable = node->table;
+        while (currentTable->next != NULL) {
+            if (strcmp(currentTable->id, search) == 0) {
+                return currentTable->value;
+            }
+        }
+        node = node->parent;
     }
 
+    yyerror("Invalid symbol given!");
+
+    return NULL;
 }
+
+

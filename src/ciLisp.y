@@ -6,13 +6,15 @@
     double dval;
     char *sval;
     struct ast_node *astNode;
+    struct sym_table_node *symTbNode;
 };
 
-%token <sval> FUNC
-%token <dval> INT, DOUBLE
-%token LPAREN RPAREN EOL QUIT
+%token <sval> FUNC SYMBOL
+%token <dval> INT DOUBLE
+%token LPAREN RPAREN EOL QUIT LET
 
 %type <astNode> s_expr f_expr number
+%type <symTbNode> let_elem let_section let_list
 
 %%
 
@@ -30,6 +32,10 @@ s_expr:
         fprintf(stderr, "yacc: s_expr ::= number\n");
         $$ = $1;
     }
+    | SYMBOL {
+        fprint(stderr, "yacc: s_expr ::= symbol\n");
+        $$ = createSymbolNode($1);
+    }
     | f_expr {
         $$ = $1;
     }
@@ -37,11 +43,34 @@ s_expr:
         fprintf(stderr, "yacc: s_expr ::= QUIT\n");
         exit(EXIT_SUCCESS);
     }
+    | LPAREN let_section s_expr RPAREN {
+        fprintf(stderr, "yacc: s_expr ::= let\n");
+        $$ = linkSymbolTable($2, $3);
+    }
     | error {
         fprintf(stderr, "yacc: s_expr ::= error\n");
         yyerror("unexpected token");
         $$ = NULL;
     };
+
+let_elem:
+    LPAREN SYMBOL s_expr RPAREN {
+        $$ = createSymbolTableNode($2, $3);
+    };
+
+let_list:
+    LET let_elem {
+        $$ = $2;
+    }
+    | let_list let_elem {
+        $$ = addToSymbolTable($1, $2);
+    };
+
+let_section:
+    LPAREN let_list RPAREN{
+        $$ = $2;
+    };
+
 
 number:
     INT {

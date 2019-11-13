@@ -7,12 +7,18 @@
 %}
 
 digit [0-9]
-letter [a-z]
+letter [a-zA-Z]
 int [+-]?{digit}+
-double [+-]?{digit}\.{digit}*
-func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"|"let"
+double [+-]?{digit}*\.{digit}*
+func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"|"cbrt"|"hypot"|"exp2"
+symbol {letter}+
 
 %%
+
+"let" {
+    fprintf(stderr, "lex: LET");
+    return LET;
+}
 
 {int} {
     yylval.dval = strtod(yytext, NULL);
@@ -46,6 +52,13 @@ func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"
     fprintf(stderr, "lex: RPAREN\n");
     return RPAREN;
     }
+
+{symbol} {
+    yylval.sval = (char *) malloc(strlen(yytext)*sizeof(char)+1);
+    strcpy(yylval.sval, yytext);
+    fprintf(stderr, "lex: SYMBOL = %s", yylval.sval);
+    return SYMBOL;
+}
 
 [\n] {
     fprintf(stderr, "lex: EOL\n");
