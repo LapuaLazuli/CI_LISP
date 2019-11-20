@@ -20,7 +20,7 @@ Model 3 (11-12-19)
 - Function createSymbolNode added
 - Function evalSymNode added
 - Function lookup added
-- Needs critical debugging (ask Ryan)
+- ~~Needs critical debugging (ask Ryan)~~
 
 Model 4 (11-13-19)
 - Debugged Model 3 successfully
