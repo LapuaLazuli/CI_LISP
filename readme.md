@@ -30,4 +30,12 @@ Model 4 (11-13-19)
 - Added warnings for double -> int precision loss
 - added printing functionality! 
 - Function printFunc added 
-- NOTE: sqrt is defaulting to null, fix!
+- ~~NOTE: sqrt is defaulting to null, fix!~~
+
+Model 5 (11-20-19)
+- added multiple parameter functionalty
+- removed resultTypeSetter
+- added s_expr_list to yacc files 
+- added function addToS_exprList
+- fixed sqrt bug
+- modified various functions to account for opList

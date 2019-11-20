@@ -77,7 +77,7 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
 //      - An OPER_TYPE (the enum identifying the specific function being called)
 //      - 2 AST_NODEs, the operands
 // SEE: AST_NODE, FUNC_AST_NODE, AST_NODE_TYPE.
-AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2)
+AST_NODE *createFunctionNode(char *funcName, AST_NODE *opList)
 {
     AST_NODE *node;
     size_t nodeSize;
@@ -95,11 +95,12 @@ AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2)
     // For functions other than CUSTOM_OPER, you should free the funcName after you're assigned the OPER_TYPE.
     node->type = FUNC_NODE_TYPE;
     node->data.function.oper = resolveFunc(funcName);
-    node->data.function.op1 = op1;
-    op1->parent = node;
-    node->data.function.op2 = op2;
-    if (op2 != NULL) op2->parent = node;
-
+    node->data.function.opList = opList;
+    AST_NODE *curNode = node->data.function.opList;
+    while (curNode != NULL){
+        curNode->parent = node;
+        curNode = curNode->next;
+    }
     return node;
 }
 
@@ -159,14 +160,17 @@ void freeNode(AST_NODE *node)
     if (node->type == FUNC_NODE_TYPE)
     {
         // Recursive calls to free child nodes
-        freeNode(node->data.function.op1);
-        freeNode(node->data.function.op2);
+        freeNode(node->data.function.opList);
 
         // Free up identifier string if necessary
         if (node->data.function.oper == CUSTOM_OPER)
         {
             free(node->data.function.ident);
         }
+    }
+
+    if (node->next != NULL){
+        freeNode(node->next);
     }
 
     free(node);
@@ -196,6 +200,7 @@ RET_VAL eval(AST_NODE *node)
             break;
         case SYM_NODE_TYPE:
             result = evalSymNode(&node->data.symbol, node);
+            break;
         default:
             yyerror("Invalid AST_NODE_TYPE, probably invalid writes somewhere!");
     }
@@ -261,82 +266,209 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
 
     // TODO populate result with the result of running the function on its operands.
     // SEE: AST_NODE, AST_NODE_TYPE, FUNC_AST_NODE
-    RET_VAL o1 = eval(funcNode->op1);
-    RET_VAL o2 = eval(funcNode->op2);
-    result.type = resultTypeSetter(o1, o2, *funcNode);
+    AST_NODE *traversal = funcNode->opList;
+    double op1, op2;
     switch (funcNode->oper){
         case NEG_OPER:
-            result = o1;
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(traversal);
             result.value.dval *= -1;
             break;
 
         case ABS_OPER:
-            result = o1;
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(traversal);
             result.value.dval = fabs(result.value.dval);
             break;
 
         case EXP_OPER:
-            result = o1;
-            result.value.dval = exp(result.value.dval);
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(funcNode->opList);
             break;
 
         case SQRT_OPER:
-            result = o1;
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(traversal);
+            result.type = DOUBLE_TYPE;
             result.value.dval = sqrt(result.value.dval);
             break;
 
         case ADD_OPER:
-            result.value.dval = o1.value.dval + o2.value.dval;
+            result.value.dval = 0;
+            result.type = INT_TYPE;
+            while (traversal != NULL){
+                if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                result.value.dval += eval(traversal).value.dval;
+                traversal = traversal->next;
+            }
             break;
 
         case SUB_OPER:
-            result.value.dval = o1.value.dval - o2.value.dval;
+            result.value.dval = 0;
+            result.type = INT_TYPE;
+            while (traversal != NULL){
+                if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                result.value.dval -= eval(traversal).value.dval;
+                traversal = traversal->next;
+            }
             break;
 
         case MULT_OPER:
-            result.value.dval = o1.value.dval * o2.value.dval;
+            result.type = INT_TYPE;
+            if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                result.type = DOUBLE_TYPE;
+            }
+            result.value.dval = eval(traversal).value.dval;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function mult\n");
+                exit(1);
+            } else{
+                traversal = traversal->next;
+                while (traversal != NULL){
+                    if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                        result.type = DOUBLE_TYPE;
+                    }
+                    result.value.dval *= eval(traversal).value.dval;
+                    traversal = traversal->next;
+                }
+            }
             break;
 
         case DIV_OPER:
-            result.value.dval = o1.value.dval / o2.value.dval;
+            result.type = DOUBLE_TYPE;
+            result.value.dval = eval(traversal).value.dval;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function div\n");
+                exit(1);
+            } else{
+                traversal = traversal->next;
+                while (traversal != NULL){
+                    result.value.dval /= eval(traversal).value.dval;
+                    traversal = traversal->next;
+                }
+            }
             break;
 
         case REMAINDER_OPER:
-            result.value.dval = remainder(o1.value.dval, o2.value.dval);
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function remainder\n");
+                exit(1);
+            } else{
+                if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                op1 = eval(traversal).value.dval;
+                traversal = traversal->next;
+                if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                op2 = eval(traversal).value.dval;
+                result.value.dval = remainder(op1, op2);
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
             break;
 
         case LOG_OPER:
-            result.value.dval = log(o1.value.dval);
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(traversal);
+            result.type = DOUBLE_TYPE;
+            result.value.dval = log(result.value.dval);
             break;
 
         case POW_OPER:
-            result.value.dval = pow(o1.value.dval, o2.value.dval);
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function pow\n");
+                exit(1);
+            } else{
+                if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                op1 = eval(traversal).value.dval;
+                traversal = traversal->next;
+                if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                op2 = eval(traversal).value.dval;
+                result.value.dval = pow(op1, op2);
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
             break;
 
         case MAX_OPER:
-            result.value.dval = fmax(o1.value.dval, o2.value.dval);
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function max\n");
+                exit(1);
+            } else{
+                RET_VAL ret = eval(traversal);
+                op1 = ret.value.dval;
+                NUM_TYPE type1 = ret.type;
+                traversal = traversal->next;
+                ret = eval(traversal);
+                op2 = ret.value.dval;
+                NUM_TYPE type2 = ret.type;
+                result.value.dval = fmax(op1, op2);
+                if ((op1 >= op2 && type1 == DOUBLE_TYPE) || (op2 >= op1 && type2 == DOUBLE_TYPE)) result.type = DOUBLE_TYPE;
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
             break;
 
         case MIN_OPER:
-            result.value.dval = fmin(o1.value.dval, o2.value.dval);
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function min\n");
+                exit(1);
+            } else{
+                RET_VAL ret = eval(traversal);
+                op1 = ret.value.dval;
+                NUM_TYPE type1 = ret.type;
+                traversal = traversal->next;
+                ret = eval(traversal);
+                op2 = ret.value.dval;
+                NUM_TYPE type2 = ret.type;
+                result.value.dval = fmin(op1, op2);
+                if ((op1 <= op2 && type1 == DOUBLE_TYPE) || (op2 <= op1 && type2 == DOUBLE_TYPE)) result.type = DOUBLE_TYPE;
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
             break;
 
         case EXP2_OPER:
-            result.value.dval = exp2(o1.value.dval);
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(traversal);
+            result.value.dval = exp2(result.value.dval);
             break;
 
         case CBRT_OPER:
-            result.value.dval = cbrt(o1.value.dval);
+            if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            result = eval(traversal);
+            result.type = DOUBLE_TYPE;
+            result.value.dval = cbrt(result.value.dval);
             break;
 
         case HYPOT_OPER:
-            result.value.dval = hypot(o1.value.dval, o2.value.dval);
+            result.type = DOUBLE_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function hypot\n");
+                exit(1);
+            } else{
+                op1 = eval(traversal).value.dval;
+                traversal = traversal->next;
+                op2 = eval(traversal).value.dval;
+                result.value.dval = hypot(op1, op2);
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
             break;
 
         case PRINT_OPER:
-            printFunc(funcNode->op1);
+            printFunc(funcNode->opList);
             printf("\n");
-            result.value.dval = (eval(funcNode->op1)).value.dval;
+            result.value.dval = (eval(funcNode->opList)).value.dval;
             break;
     }
     return result;
@@ -360,21 +492,21 @@ void printFunc(AST_NODE *node){
                     printf("%.2lf ", num);
                     break;
             }
+            if (node->next != NULL) printFunc(node->next);
             break;
         case FUNC_NODE_TYPE:
             printf("PRINT: ( %s ", operNames[node->data.function.oper]);
-            printFunc(node->data.function.op1);
+            printFunc(node->data.function.opList);
 
-            if (node->data.function.op2 != NULL) {
+            if (node->data.function.opList->next != NULL) {
                 printf("with ");
-                printFunc(node->data.function.op2);
-            }
-
-            printf(")");
+                printFunc(node->data.function.opList->next);
+            } else printf(")");
             break;
         case SYM_NODE_TYPE:
             num = eval(node).value.dval;
             printf("%.2lf ", num);
+            if (node->next != NULL) printFunc(node->next);
             break;
     }
 }
@@ -402,7 +534,7 @@ AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin){
             if (strcmp(currentTable->id, search) == 0) {
                 if (currentTable->val_type != NO_TYPE){
                     if (currentTable->val_type == INT_TYPE && currentTable->value->data.number.type == DOUBLE_TYPE){
-                        printf("WARNING: Precision loss of %.5lf in variable %s\n", currentTable->value->data.number.value.dval, search);
+                        printf("WARNING: Precision loss in variable %s\n", search);
                     }
                     currentTable->value->data.number.type = currentTable->val_type;
                 }
@@ -414,8 +546,12 @@ AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin){
         origin = origin->parent;
     }
 
-    yyerror("Invalid symbol given!");
+    yyerror("Invalid symbol given!\n");
     exit(1);
 }
 
+AST_NODE *addToS_exprList(AST_NODE *new, AST_NODE *base){
+    new->next = base;
+    return new;
+}
 
