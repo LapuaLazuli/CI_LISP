@@ -197,6 +197,9 @@ RET_VAL eval(AST_NODE *node)
             break;
         case FUNC_NODE_TYPE:
             result = evalFuncNode(&node->data.function);
+            node->type = NUM_NODE_TYPE;
+            node->data.number.type = result.type;
+            node->data.number.value.dval = result.value.dval;
             break;
         case SYM_NODE_TYPE:
             result = evalSymNode(&node->data.symbol, node);
@@ -306,12 +309,13 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
 
         case SUB_OPER:
-            result.value.dval = 0;
+            result.value.dval = eval(traversal).value.dval;
             result.type = INT_TYPE;
             while (traversal != NULL){
                 if (traversal->type == NUM_NODE_TYPE && traversal->data.number.type == DOUBLE_TYPE){
                     result.type = DOUBLE_TYPE;
                 }
+                traversal = traversal->next;
                 result.value.dval -= eval(traversal).value.dval;
                 traversal = traversal->next;
             }
@@ -466,10 +470,25 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             break;
 
         case PRINT_OPER:
+            printf("PRINT: ");
             printFunc(funcNode->opList);
             printf("\n");
-            result.value.dval = (eval(funcNode->opList)).value.dval;
+            {
+                RET_VAL temp = eval(funcNode->opList);
+                result = temp;
+                break;
+            }
+
+        case READ_OPER: {
+            char temp[BUFSIZ];
+            printf("\nread: ");
+            scanf("%s", temp);
+            fflush(stdin);
+            if (strchr(temp, '.') != NULL) result.type = DOUBLE_TYPE;
+            else result.type = INT_TYPE;
+            result.value.dval = strtod(temp, NULL);
             break;
+        }
     }
     return result;
 }
@@ -480,7 +499,7 @@ char *operNames[] = {"negate", "absolute value of", "base e exponent of",
                   "cube root of", "hypotenuse of", "reading", "randing", "printing"};
 
 void printFunc(AST_NODE *node){
-    double num;
+    double num = 0;
     switch (node->type){
         case NUM_NODE_TYPE:
             num = node->data.number.value.dval;
@@ -495,7 +514,7 @@ void printFunc(AST_NODE *node){
             if (node->next != NULL) printFunc(node->next);
             break;
         case FUNC_NODE_TYPE:
-            printf("PRINT: ( %s ", operNames[node->data.function.oper]);
+            printf("( %s ", operNames[node->data.function.oper]);
             printFunc(node->data.function.opList);
 
             if (node->data.function.opList->next != NULL) {
@@ -503,10 +522,18 @@ void printFunc(AST_NODE *node){
                 printFunc(node->data.function.opList->next);
             } else printf(")");
             break;
-        case SYM_NODE_TYPE:
-            num = eval(node).value.dval;
-            printf("%.2lf ", num);
+        case SYM_NODE_TYPE: {
+            RET_VAL temp = eval(node);
+            switch (temp.type) {
+                case INT_TYPE:
+                    printf("%.0lf ", temp.value.dval);
+                    break;
+                case DOUBLE_TYPE:
+                    printf("%.2lf ", temp.value.dval);
+                    break;
+            }
             if (node->next != NULL) printFunc(node->next);
+        }
             break;
     }
 }
@@ -532,11 +559,14 @@ AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin){
         SYM_TABLE_NODE *currentTable = origin->table;
         while (currentTable != NULL) {
             if (strcmp(currentTable->id, search) == 0) {
-                if (currentTable->val_type != NO_TYPE){
-                    if (currentTable->val_type == INT_TYPE && currentTable->value->data.number.type == DOUBLE_TYPE){
-                        printf("WARNING: Precision loss in variable %s\n", search);
+                if (currentTable->value->type == NUM_NODE_TYPE) {
+                    if (currentTable->val_type != NO_TYPE) {
+                        if (currentTable->val_type == INT_TYPE &&
+                            currentTable->value->data.number.type == DOUBLE_TYPE) {
+                            printf("WARNING: Precision loss in variable %s\n", search);
+                        }
+                        currentTable->value->data.number.type = currentTable->val_type;
                     }
-                    currentTable->value->data.number.type = currentTable->val_type;
                 }
                 return currentTable->value;
             }

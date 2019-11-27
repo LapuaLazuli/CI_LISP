@@ -45,6 +45,7 @@ s_expr:
     }
     | LPAREN let_section s_expr RPAREN {
         fprintf(stderr, "yacc: s_expr ::= let\n");
+
         $$ = linkSymbolTable($2, $3);
     }
     | error {
@@ -94,8 +95,12 @@ number:
     };
 
 f_expr:
-    LPAREN FUNC s_expr_list RPAREN {
-        //fprintf(stderr, "yacc: s_expr ::= LPAREN FUNC s_expr_list RPAREN\n");
+    LPAREN FUNC RPAREN{
+        fprintf(stderr, "yacc: s_expr ::= LPAREN FUNC RPAREN\n");
+        $$ = createFunctionNode($2, NULL);
+    }
+    | LPAREN FUNC s_expr_list RPAREN {
+        fprintf(stderr, "yacc: s_expr ::= LPAREN FUNC s_expr_list RPAREN\n");
         $$ = createFunctionNode($2, $3);
     };
 %%

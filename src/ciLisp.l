@@ -10,7 +10,7 @@ digit [0-9]
 letter [a-zA-Z]
 int [+-]?{digit}+
 double [+-]?{digit}*\.{digit}*
-func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"|"cbrt"|"hypot"|"exp2"|"print"
+func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"|"cbrt"|"hypot"|"exp2"|"print"|"read"
 type "int"|"double"
 symbol {letter}+
 
@@ -19,10 +19,11 @@ symbol {letter}+
 {type} {
     yylval.sval = (char *) malloc(strlen(yytext)*sizeof(char)+1);
     strcpy(yylval.sval, yytext);
+    fprintf(stderr, "lex: TYPE sval = %s\n", yylval.sval);
     return TYPE;
 }
 "let" {
-    fprintf(stderr, "lex: LET");
+    fprintf(stderr, "lex: LET\n");
     return LET;
 }
 
@@ -62,7 +63,7 @@ symbol {letter}+
 {symbol} {
     yylval.sval = (char *) malloc(strlen(yytext)*sizeof(char)+1);
     strcpy(yylval.sval, yytext);
-    fprintf(stderr, "lex: SYMBOL = %s", yylval.sval);
+    fprintf(stderr, "lex: SYMBOL = %s\n", yylval.sval);
     return SYMBOL;
 }
 
@@ -85,7 +86,7 @@ symbol {letter}+
  */
 int main(void) {
 
-    freopen("/dev/null", "w", stderr); // except for this line that can be uncommented to throw away debug printouts
+    //freopen("/dev/null", "w", stderr); // except for this line that can be uncommented to throw away debug printouts
 
     char *s_expr_str = NULL;
     size_t s_expr_str_len = 0;

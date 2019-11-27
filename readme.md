@@ -39,3 +39,9 @@ Model 5 (11-20-19)
 - added function addToS_exprList
 - fixed sqrt bug
 - modified various functions to account for opList
+
+Model 6 (11-27-19)
+- added read functionality
+- updated lex and yacc files
+- modified various functions
+- will need to debug carriage form feed in scanf
