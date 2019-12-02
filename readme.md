@@ -44,4 +44,13 @@ Model 6 (11-27-19)
 - added read functionality
 - updated lex and yacc files
 - modified various functions
-- will need to debug carriage form feed in scanf
+- ~~will need to debug carriage form feed in scanf~~
+
+Model 7 (12-1-19)
+- fixed carriage form feed in READ oper
+- removed resultTypeSetter
+- added less greater and equal comparisons
+- read functionality debugged
+- print function reworked
+- evalFunc function reworked
+- added cond functionality

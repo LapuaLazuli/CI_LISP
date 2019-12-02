@@ -52,7 +52,8 @@ OPER_TYPE resolveFunc(char *);
 typedef enum {
     NUM_NODE_TYPE,
     FUNC_NODE_TYPE,
-    SYM_NODE_TYPE
+    SYM_NODE_TYPE,
+    COND_NODE_TYPE
 } AST_NODE_TYPE;
 
 // Types of numeric values
@@ -61,6 +62,13 @@ typedef enum {
     DOUBLE_TYPE,
     NO_TYPE
 } NUM_TYPE;
+
+//Node to store a condition
+typedef struct{
+    struct ast_node *cond;
+    struct ast_node *nodeTrue;
+    struct ast_node *nodeFalse;
+} COND_AST_NODE;
 
 //Node to store a symbol
 typedef struct{
@@ -97,6 +105,7 @@ typedef struct ast_node {
         NUM_AST_NODE number;
         FUNC_AST_NODE function;
         SYM_AST_NODE symbol;
+        COND_AST_NODE condition;
     } data;
     struct ast_node *next;
 } AST_NODE;
@@ -117,8 +126,9 @@ void freeNode(AST_NODE *node);
 
 RET_VAL eval(AST_NODE *node);
 RET_VAL evalNumNode(NUM_AST_NODE *numNode);
-RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode);
+RET_VAL evalFuncNode(AST_NODE *node);
 RET_VAL evalSymNode(SYM_AST_NODE *symNode, AST_NODE *node);
+RET_VAL evalCondNode(COND_AST_NODE *condNode);
 
 AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin);
 AST_NODE *createSymbolNode(char *symbol);
@@ -126,6 +136,7 @@ SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier, char *t
 SYM_TABLE_NODE *addToSymbolTable(SYM_TABLE_NODE *root, SYM_TABLE_NODE *new);
 AST_NODE *linkSymbolTable(SYM_TABLE_NODE *table, AST_NODE *node);
 AST_NODE *addToS_exprList(AST_NODE *new, AST_NODE *base);
+AST_NODE *createCondNode(AST_NODE *cond, AST_NODE *trueSec, AST_NODE *falseSec);
 
 
 void printFunc(AST_NODE *node);

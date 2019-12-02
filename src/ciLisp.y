@@ -11,7 +11,7 @@
 
 %token <sval> FUNC SYMBOL TYPE
 %token <dval> INT DOUBLE
-%token LPAREN RPAREN EOL QUIT LET
+%token LPAREN RPAREN EOL QUIT LET COND
 
 %type <astNode> s_expr f_expr number s_expr_list
 %type <symTbNode> let_elem let_section let_list
@@ -47,6 +47,10 @@ s_expr:
         fprintf(stderr, "yacc: s_expr ::= let\n");
 
         $$ = linkSymbolTable($2, $3);
+    }
+    | LPAREN COND s_expr s_expr s_expr RPAREN{
+        fprintf(stderr, "yacc: s_expr ::= LPAREN COND s_expr s_expr s_expr RPAREN\n");
+        $$ = createCondNode($3, $4, $5);
     }
     | error {
         fprintf(stderr, "yacc: s_expr ::= error\n");

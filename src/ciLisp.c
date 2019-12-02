@@ -148,6 +148,27 @@ AST_NODE *linkSymbolTable(SYM_TABLE_NODE *table, AST_NODE *node){
     return node;
 }
 
+AST_NODE *createCondNode(AST_NODE *cond, AST_NODE *trueSec, AST_NODE *falseSec){
+    AST_NODE *node;
+    size_t nodeSize;
+
+    // allocate space (or error)
+    nodeSize = sizeof(AST_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+        yyerror("Memory allocation failed!");
+
+    node->type = COND_NODE_TYPE;
+    node->data.condition.cond = cond;
+    node->data.condition.nodeTrue = trueSec;
+    node->data.condition.nodeFalse = falseSec;
+
+    node->data.condition.cond->parent = node;
+    node->data.condition.nodeTrue->parent = node;
+    node->data.condition.nodeFalse->parent = node;
+
+    return node;
+}
+
 // Called after execution is done on the base of the tree.
 // (see the program production in ciLisp.y)
 // Recursively frees the whole abstract syntax tree.
@@ -196,14 +217,16 @@ RET_VAL eval(AST_NODE *node)
             result = evalNumNode(&node->data.number);
             break;
         case FUNC_NODE_TYPE:
-            result = evalFuncNode(&node->data.function);
-            node->type = NUM_NODE_TYPE;
-            node->data.number.type = result.type;
-            node->data.number.value.dval = result.value.dval;
+            result = evalFuncNode(node);
             break;
         case SYM_NODE_TYPE:
             result = evalSymNode(&node->data.symbol, node);
             break;
+        case COND_NODE_TYPE:
+            result = evalCondNode(&node->data.condition);
+
+            break;
+
         default:
             yyerror("Invalid AST_NODE_TYPE, probably invalid writes somewhere!");
     }
@@ -233,37 +256,13 @@ RET_VAL evalSymNode(SYM_AST_NODE *symNode, AST_NODE *node){
     return eval(done);
 }
 
-NUM_TYPE resultTypeSetter(RET_VAL o1, RET_VAL o2, FUNC_AST_NODE func){
-    switch (func.oper){
-        case NEG_OPER:
-        case ABS_OPER:
-        case EXP_OPER:
-        case PRINT_OPER:
-            return o1.type;
-        case ADD_OPER:
-        case SUB_OPER:
-        case MULT_OPER:
-        case REMAINDER_OPER:
-            if (o1.type == INT_TYPE && o2.type == INT_TYPE) return INT_TYPE;
-            else return DOUBLE_TYPE;
-        case LOG_OPER:
-        case CBRT_OPER:
-        case HYPOT_OPER:
-        case DIV_OPER:
-        case MAX_OPER:
-        case MIN_OPER:
-        case POW_OPER:
-        case EXP2_OPER:
-        case SQRT_OPER:
-            return DOUBLE_TYPE;
-    }
 
-}
-
-RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
+RET_VAL evalFuncNode(AST_NODE *node)
 {
-    if (!funcNode)
+    if (!node)
         return (RET_VAL){INT_TYPE, NAN};
+
+    FUNC_AST_NODE *funcNode = &(node->data.function);
 
     RET_VAL result = {INT_TYPE, NAN};
 
@@ -469,26 +468,88 @@ RET_VAL evalFuncNode(FUNC_AST_NODE *funcNode)
             }
             break;
 
-        case PRINT_OPER:
+        case PRINT_OPER:{
+            AST_NODE *temp = funcNode->opList;
+            RET_VAL tem;
+            while (temp != NULL){
+                tem = eval(temp);
+                temp = temp->next;
+            }
             printf("PRINT: ");
             printFunc(funcNode->opList);
             printf("\n");
-            {
-                RET_VAL temp = eval(funcNode->opList);
-                result = temp;
+
+            result = tem;
                 break;
             }
 
         case READ_OPER: {
             char temp[BUFSIZ];
-            printf("\nread: ");
+            printf("read: ");
             scanf("%s", temp);
-            fflush(stdin);
+            getchar();
             if (strchr(temp, '.') != NULL) result.type = DOUBLE_TYPE;
             else result.type = INT_TYPE;
             result.value.dval = strtod(temp, NULL);
+            node->type = NUM_NODE_TYPE;
+            node->data.number.type = result.type;
+            node->data.number.value.dval = result.value.dval;
             break;
         }
+
+        case RAND_OPER:
+            result.type = DOUBLE_TYPE;
+            result.value.dval = ((double) rand() / RAND_MAX);
+            node->type = NUM_NODE_TYPE;
+            node->data.number.type = result.type;
+            node->data.number.value.dval = result.value.dval;
+            break;
+
+        case LESS_OPER:
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function less\n");
+                exit(1);
+            } else{
+                op1 = eval(traversal).value.dval;
+                traversal = traversal->next;
+                op2 = eval(traversal).value.dval;
+                if (op1 < op2) result.value.dval = 1;
+                else result.value.dval = 0;
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
+            break;
+
+        case GREATER_OPER:
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function greater\n");
+                exit(1);
+            } else{
+                op1 = eval(traversal).value.dval;
+                traversal = traversal->next;
+                op2 = eval(traversal).value.dval;
+                if (op1 > op2) result.value.dval = 1;
+                else result.value.dval = 0;
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
+            break;
+
+        case EQUAL_OPER:
+            result.type = INT_TYPE;
+            if (traversal->next == NULL){
+                yyerror("ERROR: Too few parameters for function equal\n");
+                exit(1);
+            } else{
+                op1 = eval(traversal).value.dval;
+                traversal = traversal->next;
+                op2 = eval(traversal).value.dval;
+                if (op1 == op2) result.value.dval = 1;
+                else result.value.dval = 0;
+                if (traversal->next != NULL) printf("WARNING: Too many parameters for func %s\n", funcNames[funcNode->oper]);
+            }
+            break;
+
     }
     return result;
 }
@@ -511,7 +572,7 @@ void printFunc(AST_NODE *node){
                     printf("%.2lf ", num);
                     break;
             }
-            if (node->next != NULL) printFunc(node->next);
+            //if (node->next != NULL) printFunc(node->next);
             break;
         case FUNC_NODE_TYPE:
             printf("( %s ", operNames[node->data.function.oper]);
@@ -583,5 +644,12 @@ AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin){
 AST_NODE *addToS_exprList(AST_NODE *new, AST_NODE *base){
     new->next = base;
     return new;
+}
+
+RET_VAL evalCondNode(COND_AST_NODE *condNode){
+    RET_VAL result;
+    double temp = eval(condNode->cond).value.dval;
+    if (temp != 0) result = eval(condNode->nodeTrue);
+    else result = eval(condNode->nodeFalse);
 }
 
