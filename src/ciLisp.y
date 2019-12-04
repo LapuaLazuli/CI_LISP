@@ -7,14 +7,16 @@
     char *sval;
     struct ast_node *astNode;
     struct sym_table_node *symTbNode;
+    struct arg_table_node *argTbNode;
 };
 
 %token <sval> FUNC SYMBOL TYPE
 %token <dval> INT DOUBLE
-%token LPAREN RPAREN EOL QUIT LET COND
+%token LPAREN RPAREN EOL QUIT LET COND LAMBDA
 
 %type <astNode> s_expr f_expr number s_expr_list
 %type <symTbNode> let_elem let_section let_list
+%type <argTbNode> arg_list
 
 %%
 
@@ -45,7 +47,6 @@ s_expr:
     }
     | LPAREN let_section s_expr RPAREN {
         fprintf(stderr, "yacc: s_expr ::= let\n");
-
         $$ = linkSymbolTable($2, $3);
     }
     | LPAREN COND s_expr s_expr s_expr RPAREN{
@@ -72,6 +73,22 @@ let_elem:
     }
     | LPAREN SYMBOL s_expr RPAREN {
         $$ = createSymbolTableNode($3, $2, NULL);
+    }
+    | LPAREN TYPE SYMBOL LAMBDA LPAREN arg_list RPAREN s_expr RPAREN{
+        fprintf(stderr, "yacc: let_elem ::= LPAREN TYPE SYMBOL LAMBDA LPAREN arg_list RPAREN s_expr RPAREN\n");
+        $$ = createLambdaSymbolTableNode($8, $3, $2, $6);
+    }
+    | LPAREN SYMBOL LAMBDA LPAREN arg_list RPAREN s_expr RPAREN{
+        fprintf(stderr, "yacc: let_elem ::= LPAREN SYMBOL LAMBDA LPAREN arg_list RPAREN s_expr RPAREN\n");
+        $$ = createLambdaSymbolTableNode($7, $2, NULL, $5);
+    };
+
+arg_list:
+    SYMBOL arg_list{
+        $$ = addToArgTable($2, $1);
+    }
+    | SYMBOL{
+        $$ = createArgTableNode($1);
     };
 
 let_list:
@@ -106,6 +123,11 @@ f_expr:
     | LPAREN FUNC s_expr_list RPAREN {
         fprintf(stderr, "yacc: s_expr ::= LPAREN FUNC s_expr_list RPAREN\n");
         $$ = createFunctionNode($2, $3);
+    }
+    | LPAREN SYMBOL s_expr_list RPAREN{
+        fprintf(stderr, "yacc: s_expr ::= LPAREN SYMBOL s_expr_list RPAREN\n");
+        $$ = createFunctionNode($2, $3);
     };
+
 %%
 

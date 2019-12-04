@@ -32,6 +32,11 @@ symbol {letter}+
     return COND;
 }
 
+"lambda" {
+    fprintf(stderr, "lex: LAMBDA\n");
+    return LAMBDA;
+}
+
 {int} {
     yylval.dval = strtod(yytext, NULL);
     fprintf(stderr, "lex: INT dval = %lf\n", yylval.dval);
@@ -91,7 +96,7 @@ symbol {letter}+
  */
 int main(void) {
 
-    freopen("/dev/null", "w", stderr); // except for this line that can be uncommented to throw away debug printouts
+    //freopen("/dev/null", "w", stderr); // except for this line that can be uncommented to throw away debug printouts
 
     char *s_expr_str = NULL;
     size_t s_expr_str_len = 0;

@@ -54,3 +54,9 @@ Model 7 (12-1-19)
 - print function reworked
 - evalFunc function reworked
 - added cond functionality
+
+Model 8 (12-4-19)
+- implementing custom funcs
+- evalForArg, createArgTableNode, addToArgTable, createLambdaSymbolTableNode functions added
+- arg type added
+- RET_VAL_LIST added NOTE: DEBUG

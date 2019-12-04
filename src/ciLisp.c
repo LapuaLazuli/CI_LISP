@@ -97,6 +97,9 @@ AST_NODE *createFunctionNode(char *funcName, AST_NODE *opList)
     node->data.function.oper = resolveFunc(funcName);
     node->data.function.opList = opList;
     AST_NODE *curNode = node->data.function.opList;
+    if (node->data.function.oper == CUSTOM_OPER){
+        node->data.function.ident = funcName;
+    }
     while (curNode != NULL){
         curNode->parent = node;
         curNode = curNode->next;
@@ -129,6 +132,7 @@ SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier, char *t
     node->id = identifier;
     node->value = value;
     node->next = NULL;
+    node->type = VARIABLE_TYPE;
     if (type == NULL){
         node->val_type = NO_TYPE;
     } else if(strcmp("double", type) == 0) node->val_type = DOUBLE_TYPE;
@@ -138,13 +142,56 @@ SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier, char *t
 
 }
 
+SYM_TABLE_NODE *createLambdaSymbolTableNode(AST_NODE *value, char *id, char *type, ARG_TABLE_NODE *arg){
+    SYM_TABLE_NODE *node;
+    size_t nodeSize;
+
+    nodeSize = sizeof(SYM_TABLE_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+        yyerror("Memory allocation failed!");
+
+    node->type = LAMBDA_TYPE;
+    node->value = value;
+    node->id = id;
+    node->value->argTable = arg;
+    if (type == NULL){
+        node->val_type = NO_TYPE;
+    } else if(strcmp("double", type) == 0) node->val_type = DOUBLE_TYPE;
+    else node->val_type = INT_TYPE;
+    return node;
+
+}
+
+
+ARG_TABLE_NODE *createArgTableNode(char *id){
+    ARG_TABLE_NODE *node;
+    size_t nodeSize;
+    nodeSize = sizeof(ARG_TABLE_NODE);
+    if ((node = calloc(nodeSize, 1)) == NULL)
+        yyerror("Memory allocation failed!");
+    node->ident = id;
+    return node;
+
+}
+
 SYM_TABLE_NODE *addToSymbolTable(SYM_TABLE_NODE *root, SYM_TABLE_NODE *new){
     new->next = root;
     return new;
 }
 
+ARG_TABLE_NODE *addToArgTable(ARG_TABLE_NODE *root, char *new){
+    ARG_TABLE_NODE *temp = createArgTableNode(new);
+    temp->next = root;
+    return temp;
+}
+
 AST_NODE *linkSymbolTable(SYM_TABLE_NODE *table, AST_NODE *node){
     node->table = table;
+    AST_NODE *traversal = node->table->value;
+    while (traversal != NULL){
+        traversal->parent = node;
+        traversal = traversal->next;
+    }
     return node;
 }
 
@@ -224,7 +271,6 @@ RET_VAL eval(AST_NODE *node)
             break;
         case COND_NODE_TYPE:
             result = evalCondNode(&node->data.condition);
-
             break;
 
         default:
@@ -550,6 +596,13 @@ RET_VAL evalFuncNode(AST_NODE *node)
             }
             break;
 
+        case CUSTOM_OPER: {
+            RET_VAL_LIST list = evalForArg(traversal);
+            AST_NODE *func = lookup(funcNode->ident, node);
+            ARG_TABLE_NODE *args = func->argTable;
+            result = eval(func);
+            break;
+        }
     }
     return result;
 }
@@ -614,10 +667,10 @@ void printRetVal(RET_VAL val)
     }
 }
 
-AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin){
-    char *search = symbol->identifier;
+AST_NODE *lookup(char *search, AST_NODE *origin){
     while (origin != NULL) {
         SYM_TABLE_NODE *currentTable = origin->table;
+        ARG_TABLE_NODE *currentArgTable = origin->argTable;
         while (currentTable != NULL) {
             if (strcmp(currentTable->id, search) == 0) {
                 if (currentTable->value->type == NUM_NODE_TYPE) {
@@ -633,6 +686,12 @@ AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin){
             }
             currentTable = currentTable->next;
 
+        }
+        while (currentArgTable != NULL){
+            if (strcmp(search, currentArgTable->ident) == 0){
+                return currentArgTable->val;
+            }
+            currentArgTable = currentArgTable->next;
         }
         origin = origin->parent;
     }
@@ -651,5 +710,12 @@ RET_VAL evalCondNode(COND_AST_NODE *condNode){
     double temp = eval(condNode->cond).value.dval;
     if (temp != 0) result = eval(condNode->nodeTrue);
     else result = eval(condNode->nodeFalse);
+    return result;
 }
+
+RET_VAL_LIST evalForArg(AST_NODE *current){
+    RET_VAL_LIST root;
+    return root;
+}
+
 

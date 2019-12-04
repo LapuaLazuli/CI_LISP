@@ -63,6 +63,17 @@ typedef enum {
     NO_TYPE
 } NUM_TYPE;
 
+typedef enum {
+    VARIABLE_TYPE,
+    LAMBDA_TYPE
+} SYMBOL_TYPE;
+
+typedef struct arg_table_node {
+    char *ident;
+    struct ast_node *val;
+    struct arg_table_node *next;
+} ARG_TABLE_NODE;
+
 //Node to store a condition
 typedef struct{
     struct ast_node *cond;
@@ -101,6 +112,7 @@ typedef struct ast_node {
     AST_NODE_TYPE type;
     struct ast_node *parent;
     struct sym_table_node *table;
+    struct arg_table_node *argTable;
     union {
         NUM_AST_NODE number;
         FUNC_AST_NODE function;
@@ -112,11 +124,17 @@ typedef struct ast_node {
 
 //Stores a symbol table
 typedef struct sym_table_node{
+    SYMBOL_TYPE type;
     NUM_TYPE val_type;
     char *id;
     AST_NODE *value;
     struct sym_table_node *next;
 } SYM_TABLE_NODE;
+
+typedef struct ret_val_list{
+    RET_VAL *val;
+    RET_VAL *next;
+} RET_VAL_LIST;
 
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
 
@@ -130,16 +148,21 @@ RET_VAL evalFuncNode(AST_NODE *node);
 RET_VAL evalSymNode(SYM_AST_NODE *symNode, AST_NODE *node);
 RET_VAL evalCondNode(COND_AST_NODE *condNode);
 
-AST_NODE *lookup(SYM_AST_NODE *symbol, AST_NODE *origin);
+AST_NODE *lookup(char *search, AST_NODE *origin);
 AST_NODE *createSymbolNode(char *symbol);
 SYM_TABLE_NODE *createSymbolTableNode(AST_NODE *value, char *identifier, char *type);
 SYM_TABLE_NODE *addToSymbolTable(SYM_TABLE_NODE *root, SYM_TABLE_NODE *new);
 AST_NODE *linkSymbolTable(SYM_TABLE_NODE *table, AST_NODE *node);
 AST_NODE *addToS_exprList(AST_NODE *new, AST_NODE *base);
 AST_NODE *createCondNode(AST_NODE *cond, AST_NODE *trueSec, AST_NODE *falseSec);
+ARG_TABLE_NODE *createArgTableNode(char *id);
+ARG_TABLE_NODE *addToArgTable(ARG_TABLE_NODE *root, char *new);
+SYM_TABLE_NODE *createLambdaSymbolTableNode(AST_NODE *value, char *id, char *type, ARG_TABLE_NODE *arg);
+RET_VAL_LIST evalForArg(AST_NODE *current);
 
 
 void printFunc(AST_NODE *node);
 void printRetVal(RET_VAL val);
+
 
 #endif
