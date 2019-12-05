@@ -57,6 +57,8 @@ Model 7 (12-1-19)
 
 Model 8 (12-4-19)
 - implementing custom funcs
-- evalForArg, createArgTableNode, addToArgTable, createLambdaSymbolTableNode functions added
+- evalForArg, createArgTableNode, addToArgTable, createLambdaSymbolTableNode, freeRetValList functions added
 - arg type added
-- RET_VAL_LIST added NOTE: DEBUG
+- RET_VAL_LIST added
+- TODO: DEBUG line 602 and find out why it ruins the list pointer
+- test function: ((let (f lambda (x y) (add x y))) (f 1 (f 2 3)))

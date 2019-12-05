@@ -68,12 +68,6 @@ typedef enum {
     LAMBDA_TYPE
 } SYMBOL_TYPE;
 
-typedef struct arg_table_node {
-    char *ident;
-    struct ast_node *val;
-    struct arg_table_node *next;
-} ARG_TABLE_NODE;
-
 //Node to store a condition
 typedef struct{
     struct ast_node *cond;
@@ -93,6 +87,13 @@ typedef struct {
         double dval;
     } value;
 } NUM_AST_NODE;
+
+typedef struct arg_table_node {
+    char *ident;
+    NUM_AST_NODE *val;
+    struct arg_table_node *next;
+} ARG_TABLE_NODE;
+
 
 // Values returned by eval function will be numbers with a type.
 // They have the same structure as a NUM_AST_NODE.
@@ -133,7 +134,7 @@ typedef struct sym_table_node{
 
 typedef struct ret_val_list{
     RET_VAL *val;
-    RET_VAL *next;
+    struct ret_val_list *next;
 } RET_VAL_LIST;
 
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
@@ -158,11 +159,12 @@ AST_NODE *createCondNode(AST_NODE *cond, AST_NODE *trueSec, AST_NODE *falseSec);
 ARG_TABLE_NODE *createArgTableNode(char *id);
 ARG_TABLE_NODE *addToArgTable(ARG_TABLE_NODE *root, char *new);
 SYM_TABLE_NODE *createLambdaSymbolTableNode(AST_NODE *value, char *id, char *type, ARG_TABLE_NODE *arg);
-RET_VAL_LIST evalForArg(AST_NODE *current);
+RET_VAL_LIST *evalForArg(AST_NODE *current);
 
 
 void printFunc(AST_NODE *node);
 void printRetVal(RET_VAL val);
+void freeRetValList(RET_VAL_LIST *root);
 
 
 #endif

@@ -298,7 +298,7 @@ RET_VAL evalNumNode(NUM_AST_NODE *numNode)
 }
 
 RET_VAL evalSymNode(SYM_AST_NODE *symNode, AST_NODE *node){
-    AST_NODE *done = lookup(symNode, node);
+    AST_NODE *done = lookup(symNode->identifier, node);
     return eval(done);
 }
 
@@ -597,9 +597,16 @@ RET_VAL evalFuncNode(AST_NODE *node)
             break;
 
         case CUSTOM_OPER: {
-            RET_VAL_LIST list = evalForArg(traversal);
+            RET_VAL_LIST *list = evalForArg(traversal);
+            RET_VAL_LIST *root = list;
             AST_NODE *func = lookup(funcNode->ident, node);
-            ARG_TABLE_NODE *args = func->argTable;
+            ARG_TABLE_NODE *currentArg = func->argTable;
+            while (list != NULL && currentArg != NULL){
+                currentArg->val = list->val;
+                currentArg = currentArg->next;
+                list = list->next;
+            }
+            freeRetValList(root);
             result = eval(func);
             break;
         }
@@ -689,7 +696,10 @@ AST_NODE *lookup(char *search, AST_NODE *origin){
         }
         while (currentArgTable != NULL){
             if (strcmp(search, currentArgTable->ident) == 0){
-                return currentArgTable->val;
+                AST_NODE temp = *origin;
+                temp.type = NUM_NODE_TYPE;
+                temp.data.number = *currentArgTable->val;
+                return &temp;
             }
             currentArgTable = currentArgTable->next;
         }
@@ -713,9 +723,30 @@ RET_VAL evalCondNode(COND_AST_NODE *condNode){
     return result;
 }
 
-RET_VAL_LIST evalForArg(AST_NODE *current){
-    RET_VAL_LIST root;
+RET_VAL_LIST *evalForArg(AST_NODE *current){
+    RET_VAL_LIST *root;
+    root = calloc(sizeof(RET_VAL_LIST), 1);
+    RET_VAL tem = eval(current);
+    root->val = &tem;
+    current = current->next;
+    while (current != NULL){
+        RET_VAL_LIST *value = calloc(sizeof(RET_VAL_LIST), 1);
+        tem = eval(current);
+        value->val = &tem;
+        value->next = root;
+        root = value;
+        current = current->next;
+    }
+
     return root;
+}
+
+void freeRetValList(RET_VAL_LIST *root){
+    while (root != NULL){
+        RET_VAL_LIST *temp = root;
+        root = root->next;
+        free(temp);
+    }
 }
 
 
