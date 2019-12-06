@@ -602,7 +602,7 @@ RET_VAL evalFuncNode(AST_NODE *node)
             AST_NODE *func = lookup(funcNode->ident, node);
             ARG_TABLE_NODE *currentArg = func->argTable;
             while (list != NULL && currentArg != NULL){
-                currentArg->val = list->val;
+                currentArg->val = &list->val;
                 currentArg = currentArg->next;
                 list = list->next;
             }
@@ -727,14 +727,15 @@ RET_VAL_LIST *evalForArg(AST_NODE *current){
     RET_VAL_LIST *root;
     root = calloc(sizeof(RET_VAL_LIST), 1);
     RET_VAL tem = eval(current);
-    root->val = &tem;
+    root->val = tem;
     current = current->next;
+    RET_VAL_LIST *cur = root;
     while (current != NULL){
         RET_VAL_LIST *value = calloc(sizeof(RET_VAL_LIST), 1);
         tem = eval(current);
-        value->val = &tem;
-        value->next = root;
-        root = value;
+        value->val = tem;
+        cur->next = value;
+        cur = cur->next;
         current = current->next;
     }
 

@@ -60,5 +60,9 @@ Model 8 (12-4-19)
 - evalForArg, createArgTableNode, addToArgTable, createLambdaSymbolTableNode, freeRetValList functions added
 - arg type added
 - RET_VAL_LIST added
-- TODO: DEBUG line 602 and find out why it ruins the list pointer
+- ~~TODO: DEBUG line 602 and find out why it ruins the list pointer~~
 - test function: ((let (f lambda (x y) (add x y))) (f 1 (f 2 3)))
+
+Model 9 (12-6-19)
+- line 602 debugged. ciLisp is fully operational
+- TODO: debug further come Monday

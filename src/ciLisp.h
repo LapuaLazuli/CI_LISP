@@ -133,7 +133,7 @@ typedef struct sym_table_node{
 } SYM_TABLE_NODE;
 
 typedef struct ret_val_list{
-    RET_VAL *val;
+    RET_VAL val;
     struct ret_val_list *next;
 } RET_VAL_LIST;
 
