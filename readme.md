@@ -76,12 +76,12 @@ Known Issues:
 - Custom recursive functions only work when stepped through or when run with valgrind memcheck no idea why
 
 Helper Function Desciptions:
-lookup: looks up symbol and returns associated node
-linkSymbolTable: links symbol table to associated node
-addToS_exprList: adds new s_expr to list
-createLambdaSymbolTableNode: creates a function node with the associated symbol and custom operations
-evalForArg: evaluates parameters to be used for arg list insertion
-printFunc: Function used by PRINT to print evaluated function with formatting
-freeRetValList: frees the RET_VAL_LIST created for evalForArg
+- lookup: looks up symbol and returns associated node
+- linkSymbolTable: links symbol table to associated node
+- addToS_exprList: adds new s_expr to list
+- createLambdaSymbolTableNode: creates a function node with the associated symbol and custom operations
+- evalForArg: evaluates parameters to be used for arg list insertion
+- printFunc: Function used by PRINT to print evaluated function with formatting
+- freeRetValList: frees the RET_VAL_LIST created for evalForArg
 
 
