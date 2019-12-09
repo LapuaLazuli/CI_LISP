@@ -65,4 +65,23 @@ Model 8 (12-4-19)
 
 Model 9 (12-6-19)
 - line 602 debugged. ciLisp is fully operational
-- TODO: debug further come Monday
+- ~~TODO: debug further come Monday~~
+
+Model 10 (12-9-19)
+- added errors/warnings for too little/many parameters for custom functions, respectively
+- cleaned up memory leak made by createLambdaSymbolTableNode
+
+
+Known Issues:
+- Custom recursive functions only work when stepped through or when run with valgrind memcheck no idea why
+
+Helper Function Desciptions:
+lookup: looks up symbol and returns associated node
+linkSymbolTable: links symbol table to associated node
+addToS_exprList: adds new s_expr to list
+createLambdaSymbolTableNode: creates a function node with the associated symbol and custom operations
+evalForArg: evaluates parameters to be used for arg list insertion
+printFunc: Function used by PRINT to print evaluated function with formatting
+freeRetValList: frees the RET_VAL_LIST created for evalForArg
+
+

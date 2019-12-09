@@ -237,6 +237,28 @@ void freeNode(AST_NODE *node)
         }
     }
 
+    if (node->table != NULL){
+        SYM_TABLE_NODE *current = node->table;
+        while(current != NULL){
+            SYM_TABLE_NODE *temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+
+    if(node->type == SYM_NODE_TYPE){
+        free(node->data.symbol.identifier);
+    }
+
+    if (node->argTable != NULL){
+        ARG_TABLE_NODE *current = node->argTable;
+        while (current != NULL){
+            ARG_TABLE_NODE *temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+
     if (node->next != NULL){
         freeNode(node->next);
     }
@@ -606,6 +628,13 @@ RET_VAL evalFuncNode(AST_NODE *node)
                 currentArg = currentArg->next;
                 list = list->next;
             }
+            if(currentArg != NULL){
+                yyerror("ERROR: NOT ENOUGH PARAMETERS FOR CUSTOM FUNCTION");
+                exit(1);
+            }
+            if (list != NULL){
+                printf("WARNING!: Too many parameters for function! Will only use the first in the list!");
+            }
             freeRetValList(root);
             result = eval(func);
             break;
@@ -749,5 +778,7 @@ void freeRetValList(RET_VAL_LIST *root){
         free(temp);
     }
 }
+
+
 
 

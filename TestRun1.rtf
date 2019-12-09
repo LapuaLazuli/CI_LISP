@@ -1,0 +1,62 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf600
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 /usr/local/bin/valgrind --tool=memcheck --xml=yes --xml-file=/private/var/folders/hg/q2pk3nvn4z9fkt5s9n_9hwym1yw_t8/T/valgrind --gen-suppressions=all --leak-check=full --leak-resolution=med --track-origins=yes --vgdb=no /Users/nathan.moreno164/Desktop/CI_LISP/cmake-build-debug/cilisp\
+\
+> (print 5)\
+PRINT: 5 \
+Type: Integer, Value 5\
+\
+> (add (read) 2)\
+read: 1\
+Type: Integer, Value 3\
+\
+> (min (read) -34)\
+read: 25\
+Type: Integer, Value -34\
+\
+> (max 249 556)\
+Type: Integer, Value 556\
+\
+> (cbrt 34)\
+Type: Double, Value 3.24\
+\
+> (hypot 45 23)\
+Type: Double, Value 50.54\
+\
+> (pow 34 45)\
+Type: Integer, Value 825184889837726003908515930208490771163794758647406725074694663307264\
+\
+> (log 2 3)\
+WARNING: Too many parameters for func log\
+Type: Double, Value 0.69\
+\
+> (remainder 762 556)\
+Type: Integer, Value 206\
+\
+> (div 234 45)\
+Type: Double, Value 5.20\
+\
+> (mult 4 5 6)\
+Type: Integer, Value 120\
+\
+> (sqrt 56)\
+Type: Double, Value 7.48\
+\
+> (exp 34)\
+Type: Integer, Value 34\
+\
+> (abs 456)\
+Type: Integer, Value 456\
+\
+> (abs (neg 34))\
+Type: Integer, Value 34\
+\
+> quit\
+\
+Process finished with exit code 0\
+}
